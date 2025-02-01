@@ -54,8 +54,9 @@ stdenv.mkDerivation {
   '';
 
   installPhase = ''
-    mkdir -p $out/{lib,govalhalla}
+    mkdir -p $out/lib
     cp libvalhalla_go.a $out/lib/
-    cp -r *.go $out/govalhalla/
+    cp -r *.go $out/
+    cp $src/go.mod $out
   '';
 }

@@ -20,7 +20,7 @@
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
 
       # Nixpkgs currently has valhalla 3.4.0, to get the up-to-date version, an overlay
-      # with the custom valhalla package is created.
+      # with the custom valhalla package is created. This
       overlay = final: prev: {
         valhalla = final.callPackage ./pkgs/valhalla.nix { };
       };
@@ -45,13 +45,7 @@
         in
         {
           govalhalla = pkgs.callPackage ./govalhalla { };
-          govalhallatest = pkgs.buildGoModule {
-            pname = "govalhallatest";
-            src = ./.;
-            vendorHash = "";
-            CGO_ENABLED = "0";
-            buildInputs = [ self.packages.${system}.govalhalla ];
-          };
+          govalhallatest = pkgs.callPackage ./govalhallatest { };
         }
       );
 
