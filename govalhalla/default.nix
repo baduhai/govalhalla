@@ -16,6 +16,7 @@ stdenv.mkDerivation {
   src = ./.;
 
   nativeBuildInputs = [ swig ];
+
   buildInputs = [
     valhalla
     go
@@ -33,8 +34,8 @@ stdenv.mkDerivation {
       -package govalhalla \
       -o govalhalla_wrap.cxx \
       valhalla.i
+
     # Compile object file
-    echo "wrapping shared library cd src ....."
     $CXX -c govalhalla_wrap.cxx \
         -I. \
         -I${valhalla}/include \
@@ -45,6 +46,7 @@ stdenv.mkDerivation {
         -I${zlib}/include \
         -std=c++17 
 
+    # Create static library for the Go binding
     ar rcs libvalhalla_go.a govalhalla_wrap.o
     ar x ${valhalla}/lib/libvalhalla.a
     ar r libvalhalla_go.a *.o
