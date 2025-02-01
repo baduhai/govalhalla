@@ -11,7 +11,7 @@ in
 buildGoModule {
   name = "govalhallatest";
   src = ./.;
-  vendorHash = "sha256-FLv7j8NcIZVBWzTv2BJ7MeVas7P3a5UfiRSAMr7jOyA=";
+  vendorHash = "";
 
   CGO_ENABLED = "1";
 
