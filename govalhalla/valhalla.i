@@ -2,11 +2,18 @@
 %include <std_string.i>
 %include <std_pair.i>
 
+
 %{
 #include <valhalla/tyr/actor.h>
 #include <valhalla/baldr/graphreader.h>
 #include <valhalla/baldr/rapidjson_utils.h>
 #include <valhalla/proto/api.pb.h>
+#include <valhalla/baldr/location.h>
+#include <valhalla/sif/costfactory.h>
+#include <valhalla/thor/pathinfo.h>
+#include <valhalla/thor/route_matcher.h>
+#include <valhalla/midgard/util.h>
+#include <boost/property_tree/ptree.hpp>
 #include <string>
 #include <memory>
 #include <functional>
@@ -18,313 +25,322 @@ using namespace valhalla::tyr;
 %}
 
 
+// %ignore tile_extract_t;
+// %ignore SearchFilter;
+// %ignore rapidjson::get_optional;
+// %ignore std::hash<valhalla::baldr::Location>;
+
 // Expose std::pair<std::string, std::string> to hold the result 
 
 typedef std::pair<std::string, std::string> ResponsePair;
 
 %template(ResponsePair) std::pair<std::string, std::string>;
 
+// %typemap(in) const std::function<void()>* {
+//     $1 = nullptr;
+// }
+
 
 // Expose the ActorWrapper class to Go
-%typemap(gotype) std::uintptr_t "uintptr"   // Map to Go's uintptr type
-%typemap(in) std::uintptr_t {
-    $1 = static_cast<std::uintptr_t>($input);
-}
-%typemap(out) std::uintptr_t {
-    $result = static_cast<std::uintptr_t>($1);
-}
-// %include "valhalla/tyr/actor.h"
+// %typemap(gotype) std::uintptr_t "uintptr"   // Map to Go's uintptr type
+// %typemap(in) std::uintptr_t {
+//     $1 = static_cast<std::uintptr_t>($input);
+// }
+// %typemap(out) std::uintptr_t {
+//     $result = static_cast<std::uintptr_t>($1);
+// }
 
-
-%inline %{
-
-// RAII wrapper for actor
-class ActorWrapper {
-private:
-    actor_t* actor_;
+// %include "valhalla/proto/api.pb.h"
+// Declare the namespaces and class before extending
+// Include necessary headers for SWIG parsing
+// %import <valhalla/proto/api.pb.h>
+// %import <valhalla/baldr/graphreader.h>
+// %include <boost/property_tree/ptree.hpp>
+namespace valhalla {
+namespace tyr {
+class actor_t {
+// public:
     
-public:
-    static std::uintptr_t NewActor(const std::string& config_json, bool auto_cleanup = false) {
-        std::uintptr_t handle = 0;
+private:
+    actor_t(const boost::property_tree::ptree& config, bool auto_cleanup = false);
+    actor_t(const boost::property_tree::ptree& config, valhalla::baldr::GraphReader& reader, bool auto_cleanup = false);
+    ~actor_t();
+    actor_t() = delete;  // Prevent default constructor
+};
+}}
+
+
+%extend valhalla::tyr::actor_t {
+
+      static actor_t* CreateActor(const std::string& config_json, bool auto_cleanup = false) {
+        actor_t* actor = nullptr;
         std::string err = "";
         
         try {
+
             boost::property_tree::ptree pt;
             std::istringstream is(config_json);
             rapidjson::read_json(is, pt);
             
-            auto* actor = new actor_t(pt, auto_cleanup);
+            actor = new actor_t(pt, auto_cleanup);
             // Test the actor
             // actor->status("");
             
-            auto* wrapper = new ActorWrapper(actor);
-            handle = reinterpret_cast<std::uintptr_t>(wrapper);
+            // auto* wrapper = new ActorWrapper(actor);
+            // handle = reinterpret_cast<std::uintptr_t>(actor);
         } catch (const std::exception& e) {
-            err = std::string("std exceptionError: ") + e.what();
+            // return std::make_pair("", std::string("Error: ") + e.what());
+            return nullptr;
         } catch (...) {
-            err = std::string("unknown exceptionError: ");
+            // return std::make_pair("", "Unknown error");
+            return nullptr;
         }
         
-        return handle;
+        return actor;
     }
     
     // Direct method signatures matching Valhalla's actor
 
     std::pair<std::string, std::string> Act( valhalla::Api& api, const std::function<void()>* interrupt = nullptr) {
-        std::string result = "";
-        std::string err = "";
+        
         
         try {
-            auto response = actor_->act(api);
-            result = std::string(response);
-            err = "";
+
+            return std::make_pair(self->act(api, interrupt), "");
         } catch (const std::exception& e) {
-            err = std::string("std exceptionError: ") + e.what();
+            return std::make_pair("", std::string("Error: ") + e.what());
         } catch (...) {
-            err = std::string("unknown exceptionError: ");
+            return std::make_pair("", "Unknown error");
         }
         
-        return {result, err};
+        
     }
 
      std::pair<std::string, std::string> Route(const std::string& request, const std::function<void()>* interrupt = nullptr, valhalla::Api* api = nullptr) {
-        std::string result = "";
-        std::string err = "";
+        
         
         try {
-            auto response = actor_->route(request, interrupt, api);
-            result = std::string(response);
-            err = "";
+
+            return std::make_pair(self->route(request, interrupt, api), "");
+            
         } catch (const std::exception& e) {
-            err = std::string("std exceptionError: ") + e.what();
+            return std::make_pair("", std::string("Error: ") + e.what());
         } catch (...) {
-            err = std::string("unknown exceptionError: ");
+            return std::make_pair("", "Unknown error");
         }
         
-        return {result, err};
+        
     }
 
      std::pair<std::string, std::string> Matrix(const std::string& request, const std::function<void()>* interrupt = nullptr, valhalla::Api* api = nullptr) {
-        std::string result = "";
-        std::string err = "";
+        
         
         try {
-            auto response = actor_->matrix(request, interrupt, api);
+
+            return std::make_pair(self->matrix(request, interrupt, api), "");
             
-            result = std::string(response);
-            err = "";
+            
         } catch (const std::exception& e) {
-            err = std::string("std exceptionError: ") + e.what();
+            return std::make_pair("", std::string("Error: ") + e.what());
         } catch (...) {
-            err = std::string("unknown exceptionError: ");
+            return std::make_pair("", "Unknown error");
         }
         
-        return {result, err};
+        
     }
 
     std::pair<std::string, std::string> OptimizedRroute(const std::string& request, const std::function<void()>* interrupt = nullptr, valhalla::Api* api = nullptr) {
-        std::string result = "";
-        std::string err = "";
+        
         
         try {
-            auto response = actor_->optimized_route(request, interrupt, api);
+
+            return std::make_pair(self->optimized_route(request, interrupt, api), "");
             
-            result = std::string(response);
-            err = "";
+            
         } catch (const std::exception& e) {
-            err = std::string("std exceptionError: ") + e.what();
+            return std::make_pair("", std::string("Error: ") + e.what());
         } catch (...) {
-            err = std::string("unknown exceptionError: ");
+            return std::make_pair("", "Unknown error");
         }
         
-        return {result, err};
+        
     }
 
     std::pair<std::string, std::string> Isochrone(const std::string& request, const std::function<void()>* interrupt = nullptr, valhalla::Api* api = nullptr) {
-        std::string result = "";
-        std::string err = "";
+        
         
         try {
-            auto response = actor_->isochrone(request, interrupt, api);
+
+            return std::make_pair(self->isochrone(request, interrupt, api), "");
             
-            result = std::string(response);
-            err = "";
+            
         } catch (const std::exception& e) {
-            err = std::string("std exceptionError: ") + e.what();
+            return std::make_pair("", std::string("Error: ") + e.what());
         } catch (...) {
-            err = std::string("unknown exceptionError: ");
+            return std::make_pair("", "Unknown error");
         }
         
-        return {result, err};
+        
     }
 
 
     std::pair<std::string, std::string> TraceRoute(const std::string& request, const std::function<void()>* interrupt = nullptr, valhalla::Api* api = nullptr) {
-        std::string result = "";
-        std::string err = "";
+        
         
         try {
-            auto response = actor_->trace_route(request, interrupt, api);
+
+            return std::make_pair(self->trace_route(request, interrupt, api), "");
             
-            result = std::string(response);
-            err = "";
+            
         } catch (const std::exception& e) {
-            err = std::string("std exceptionError: ") + e.what();
+            return std::make_pair("", std::string("Error: ") + e.what());
         } catch (...) {
-            err = std::string("unknown exceptionError: ");
+            return std::make_pair("", "Unknown error");
         }
         
-        return {result, err};
+        
     }
 
 
     std::pair<std::string, std::string> TraceAttributes(const std::string& request, const std::function<void()>* interrupt = nullptr, valhalla::Api* api = nullptr) {
-        std::string result = "";
-        std::string err = "";
+        
         
         try {
-            auto response = actor_->trace_attributes(request, interrupt, api);
+
+            return std::make_pair(self->trace_attributes(request, interrupt, api), "");
             
-            result = std::string(response);
-            err = "";
+            
         } catch (const std::exception& e) {
-            err = std::string("std exceptionError: ") + e.what();
+            return std::make_pair("", std::string("Error: ") + e.what());
         } catch (...) {
-            err = std::string("unknown exceptionError: ");
+            return std::make_pair("", "Unknown error");
         }
         
-        return {result, err};
+        
     }
 
 
     std::pair<std::string, std::string> Height(const std::string& request, const std::function<void()>* interrupt = nullptr, valhalla::Api* api = nullptr) {
-        std::string result = "";
-        std::string err = "";
+        
         
         try {
-            auto response = actor_->height(request, interrupt, api);
+
+            return std::make_pair(self->height(request, interrupt, api), "");
             
-            result = std::string(response);
-            err = "";
+            
         } catch (const std::exception& e) {
-            err = std::string("std exceptionError: ") + e.what();
+            return std::make_pair("", std::string("Error: ") + e.what());
         } catch (...) {
-            err = std::string("unknown exceptionError: ");
+            return std::make_pair("", "Unknown error");
         }
         
-        return {result, err};
+        
     }
 
 
     std::pair<std::string, std::string> TransitAvailable(const std::string& request, const std::function<void()>* interrupt = nullptr, valhalla::Api* api = nullptr) {
-        std::string result = "";
-        std::string err = "";
+        
         
         try {
-            auto response = actor_->transit_available(request, interrupt, api);
+
+            return std::make_pair(self->transit_available(request, interrupt, api), "");
             
-            result = std::string(response);
-            err = "";
+            
         } catch (const std::exception& e) {
-            err = std::string("std exceptionError: ") + e.what();
+            return std::make_pair("", std::string("Error: ") + e.what());
         } catch (...) {
-            err = std::string("unknown exceptionError: ");
+            return std::make_pair("", "Unknown error");
         }
         
-        return {result, err};
+        
     }
 
 
     std::pair<std::string, std::string> Expansion(const std::string& request, const std::function<void()>* interrupt = nullptr, valhalla::Api* api = nullptr) {
-        std::string result = "";
-        std::string err = "";
+        
         
         try {
-            auto response = actor_->expansion(request, interrupt, api);
+
+            return std::make_pair(self->expansion(request, interrupt, api), "");
             
-            result = std::string(response);
-            err = "";
+            
         } catch (const std::exception& e) {
-            err = std::string("std exceptionError: ") + e.what();
+            return std::make_pair("", std::string("Error: ") + e.what());
         } catch (...) {
-            err = std::string("unknown exceptionError: ");
+            return std::make_pair("", "Unknown error");
         }
         
-        return {result, err};
+        
     }
 
 
     std::pair<std::string, std::string> Centroid(const std::string& request, const std::function<void()>* interrupt = nullptr, valhalla::Api* api = nullptr) {
-        std::string result = "";
-        std::string err = "";
+        
         
         try {
-            auto response = actor_->centroid(request, interrupt, api);
+
+            return std::make_pair(self->centroid(request, interrupt, api), "");
             
-            result = std::string(response);
-            err = "";
+            
         } catch (const std::exception& e) {
-            err = std::string("std exceptionError: ") + e.what();
+            return std::make_pair("", std::string("Error: ") + e.what());
         } catch (...) {
-            err = std::string("unknown exceptionError: ");
+            return std::make_pair("", "Unknown error");
         }
         
-        return {result, err};
+        
     }
 
 
     std::pair<std::string, std::string> Status(const std::string& request, const std::function<void()>* interrupt = nullptr, valhalla::Api* api = nullptr) {
-        std::string result = "";
-        std::string err = "";
+        
         
         try {
-            auto response = actor_->status(request, interrupt, api);
+
+            return std::make_pair(self->status(request, interrupt, api), "");
             
-            result = std::string(response);
-            err = "";
+            
         } catch (const std::exception& e) {
-            err = std::string("std exceptionError: ") + e.what();
+            return std::make_pair("", std::string("Error: ") + e.what());
         } catch (...) {
-            err = std::string("unknown exceptionError: ");
+            return std::make_pair("", "Unknown error");
         }
         
-        return {result, err};
+        
     }
 
     
     void Cleanup() {
-        if (actor_) {
-            actor_->cleanup();
+        if (self) {
+            self->cleanup();
         }
     }
 
-private:
-    explicit ActorWrapper(actor_t* actor) : actor_(actor) {}
+// private:
+//     explicit ActorWrapper(valhalla::tyr::actor_t* actor) : actor_(actor) {}
     
-    ~ActorWrapper() {
-        if (actor_) {
-            try {
-                actor_->cleanup();
-            } catch (...) {
-                //  cleanup errors
-            }
-            delete actor_;
-        }
-    }
+//     ~ActorWrapper() {
+//         if (actor_) {
+//             try {
+
+//                 actor_->cleanup();
+//             } catch (...) {
+//                 //  cleanup errors
+//             }
+//             delete actor_;
+//         }
+//     }
     
-    // Prevent copying
-    ActorWrapper(const ActorWrapper&) = delete;
-    ActorWrapper& operator=(const ActorWrapper&) = delete;
+//     // Prevent copying
+//     ActorWrapper(const ActorWrapper&) = delete;
+//     ActorWrapper& operator=(const ActorWrapper&) = delete;
 };
 
 
-
-%}
-// The CGO preamble 
+// CGO preamble
 %insert(go_begin) %{
 /*
-#cgo LDFLAGS: -L. -lvalhalla_go
-#include <stdlib.h>
-#include <valhalla/tyr/actor.h>
+// #cgo CXXFLAGS: -std=c++17 -I./result/include
+#cgo LDFLAGS: -L${SRCDIR}/result/lib  -lgovalhalla
 */
 %}
