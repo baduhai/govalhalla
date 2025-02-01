@@ -35,7 +35,6 @@ stdenv.mkDerivation (finalAttrs: {
     "-DENABLE_CCACHE=OFF"
     "-DENABLE_SINGLE_FILES_WERROR=OFF"
     "-DCMAKE_C_COMPILER=gcc"
-    "-DBUILD_SHARED_LIBS=OFF"
     "-DENABLE_PYTHON_BINDINGS=OFF"
     "-DENABLE_TOOLS=OFF"
     "-DENABLE_SERVICES=OFF"
@@ -43,6 +42,14 @@ stdenv.mkDerivation (finalAttrs: {
     "-DENABLE_CCACHE=OFF"
     "-DENABLE_DATA_TOOLS=OFF"
     "-DCMAKE_BUILD_TYPE=Release"
+    # Ensure static compilation
+    "-DBUILD_SHARED_LIBS=OFF"
+    # Explicitly set static linking for dependencies
+    "-DBoost_USE_STATIC_LIBS=ON"
+    "-DProtobuf_USE_STATIC_LIBS=ON"
+    "-DGEOS_USE_STATIC_LIBS=ON"
+    "-DZLIB_USE_STATIC_LIBS=ON"
+    "-DLZ4_USE_STATIC_LIBS=ON"
   ];
 
   env.NIX_CFLAGS_COMPILE = toString [
@@ -56,20 +63,7 @@ stdenv.mkDerivation (finalAttrs: {
       --replace '=''${exec_prefix}//' '=/'
   '';
 
-  passthru.tests = {
-    pkg-config = testers.testMetaPkgConfig finalAttrs.finalPackage;
-  };
-
   postInstall = ''
     cp -r $out/include/valhalla/third_party/* $out/include/
   '';
-
-  meta = with lib; {
-    changelog = "https://github.com/valhalla/valhalla/blob/${finalAttrs.src.rev}/CHANGELOG.md";
-    description = "Open Source Routing Engine for OpenStreetMap";
-    homepage = "https://valhalla.readthedocs.io/";
-    license = licenses.mit;
-    maintainers = [ maintainers.Thra11 ];
-    platforms = platforms.linux;
-  };
 })

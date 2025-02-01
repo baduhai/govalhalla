@@ -15,10 +15,24 @@
       ];
 
       # Helper function to generate an attrset '{ x86_64-linux = f "x86_64-linux"; ... }'.
+      # Essentially allows to define the package once for all systems, instead of once per
+      # system.
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
 
+      # Nixpkgs currently has valhalla 3.4.0, to get the up-to-date version, an overlay
+      # with the custom valhalla package is created.
+      overlay = final: prev: {
+        valhalla = final.callPackage ./pkgs/valhalla.nix { };
+      };
+
       # Nixpkgs instantiated for supported system types.
-      nixpkgsFor = forAllSystems (system: import nixpkgs { inherit system; });
+      nixpkgsFor = forAllSystems (
+        system:
+        import nixpkgs {
+          inherit system;
+          overlays = [ overlay ]; # Overlay is applied.
+        }
+      );
 
     in
     {
@@ -30,10 +44,13 @@
           pkgs = nixpkgsFor.${system};
         in
         {
-          govalhalla = pkgs.buildGoModule {
-            pname = "govalhalla";
+          govalhalla = pkgs.callPackage ./govalhalla { };
+          govalhallatest = pkgs.buildGoModule {
+            pname = "govalhallatest";
             src = ./.;
             vendorHash = "";
+            CGO_ENABLED = "0";
+            buildInputs = [ self.packages.${system}.govalhalla ];
           };
         }
       );
@@ -51,11 +68,10 @@
               gopls
               gotools
               go-tools
+              self.packages.${system}.govalhalla
             ];
           };
         }
       );
-
-      defaultPackage = forAllSystems (system: self.packages.${system}.govalhalla);
     };
 }
