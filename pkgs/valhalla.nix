@@ -44,6 +44,7 @@ stdenv.mkDerivation (finalAttrs: {
     "-DCMAKE_BUILD_TYPE=Release"
     # Ensure static compilation
     "-DBUILD_SHARED_LIBS=OFF"
+    "-DENABLE_STATIC_LIBRARY_MODULES=ON"
     # Explicitly set static linking for dependencies
     "-DBoost_USE_STATIC_LIBS=ON"
     "-DProtobuf_USE_STATIC_LIBS=ON"
